@@ -71,7 +71,7 @@
 
       // ====== 文字處理（函式定位用） ======
       const slugifyItemName = (name) => {
-        return name.replace(/\s+/g, '').replace(/\(.*\)/, '').replace(/[^a-zA-Z0-9._]/g, '-');
+        return name.replace(/\s+/g, '').replace(/\(.*?\)/g, '').replace(/[^a-zA-Z0-9._]/g, '-');
       };
       const tokensFromName = (name) => {
         const tokens = new Set();
@@ -107,12 +107,21 @@
           { name: "np.empty(shape, dtype=...)", desc: "建立未初始化內容的陣列（僅佔位）", what: "建立形狀固定，但裡面數值未定（記憶體殘值）。", uses: ["大型暫存陣列（之後會馬上覆寫）"], notes: ["內容是記憶體中的舊資料，建立後一定要覆寫，否則會出現亂數"], code: `import numpy as np\nbuf = np.empty((2,4))\nbuf[:] = 0.0\nprint(buf)`, output: `[[0. 0. 0. 0.]\n [0. 0. 0. 0.]]`, imgdesc: "一張 2×4 的黑色方格（初始化後的結果）。" },
           { name: "np.array(list)", desc: "將 Python list 轉成 NumPy 陣列", what: "把一般 list 轉換成可向量化運算的陣列。", uses: ["把 CSV / JSON 讀入的資料轉成陣列以加快運算"], notes: ["若子 list 長度不同，會變成 object 型別，失去數值運算加速優勢"], code: `import numpy as np\narr = np.array([[1,2,3],[10,20,30]])\nprint(arr)`, output: `[[ 1  2  3]\n [10 20 30]]`, imgdesc: "兩列三行的數字表格。" },
           { name: "np.arange(start, stop, step, dtype=...)", desc: "建立等差數列（不含 stop）", what: "建立一個不包含終點的等差數列。", uses: ["生成時間序列","影像幀索引"], notes: ["浮點步長可能有誤差；要固定點數請用 np.linspace"], code: `import numpy as np\nt = np.arange(0, 2.5, 0.5)\nprint(t)`, output: `[0.  0.5 1.  1.5 2. ]`, imgdesc: "數軸上等距的點（間隔 0.5）。" },
-          { name: "np.linspace(start, stop, num)", desc: "建立等距數列（含終點，控制總點數）", what: "建立一個包含終點、可控制點數的等距數列。", uses: ["機械手臂關節插值","繪圖座標生成"], notes: ["想控制步長用 arange；想控制點數用 linspace"], code: `import numpy as np\njoints = np.linspace(-90, 90, 7)\nprint(joints)`, output: `[-90. -60. -30.   0.  30.  60.  90.]`, imgdesc: "從 -90 到 90 平均分成 7 個角度值。" },
+          { name: "np.linspace(start, stop, num)", desc: "建立等距數列（含終點，控制總點數）", what: "建立一個包含終點、可控制點數的等距數列。", uses: ["機械手臂關節插值","繪圖座標生成"], notes: ["想控制步長用 arange；想控制點數用 linspace","linspace 會包含終點（相對於 arange 不含 stop）。"], code: `import numpy as np\njoints = np.linspace(-90, 90, 7)\nprint(joints)`, output: `[-90. -60. -30.   0.  30.  60.  90.]`, imgdesc: "從 -90 到 90 平均分成 7 個角度值。" },
           { name: "np.random.rand(d0, d1, ...)", desc: "產生 0~1 均勻分布亂數", what: "建立介於 0 與 1 的均勻分布亂數陣列。", uses: ["蒙地卡羅模擬","動態效果測試"], notes: ["想重現結果要先 np.random.seed(固定值)","現代 API 建議使用 Generator（np.random.default_rng）"], code: `import numpy as np\nnp.random.seed(0)\nu = np.random.rand(2,3)\nprint(u)`, output: `[[0.548814 0.715189 0.602763]\n [0.544883 0.423655 0.645894]]`, imgdesc: "2×3 的均勻亂數表格。" },
           { name: "np.random.randn(d0, d1, ...)", desc: "產生常態分布亂數（μ=0, σ=1）", what: "產生標準常態分布亂數，可再線性轉換成任意 μ, σ。", uses: ["模擬感測器噪聲","資料增強"], notes: ["要改平均與標準差可用 x*σ + μ","建議固定 seed 以重現實驗"], code: `import numpy as np\nnp.random.seed(0)\nn = np.random.randn(2,3)*2 + 5\nprint(np.round(n,6))`, output: `[[8.528105 5.800314 6.957476]\n [9.481786 8.735116 3.045444]]`, imgdesc: "2×3 的常態亂數表格（平均值約 5）。" },
           { name: "np.random.default_rng(seed)", desc: "建立現代亂數產生器（Generator）", what: "回傳 Generator 物件（預設 PCG64），可重現測試並改善並行抽樣。", uses: ["在函式/類別內持有 rng，避免全域狀態","為每次實驗設定 seed 以重現結果"], notes: ["Generator API 取代舊的 np.random.* 全域函式"], code: `import numpy as np\nrng = np.random.default_rng(123)\nx = rng.random(3)\nprint(x.shape)`, output: `(3,)` },
           { name: "rng.normal(loc, scale, size)", desc: "以 Generator 取樣常態分布", what: "透過 rng.normal 抽樣，避免全域狀態污染。", uses: ["加入高斯雜訊","建立測試資料"], notes: ["先以 np.random.default_rng(seed) 建立 rng"], code: `import numpy as np\nrng = np.random.default_rng(0)\nsamples = rng.normal(5, 2, (2,3))\nprint(samples.shape)`, output: `(2, 3)` },
           { name: "rng.choice(a, size, replace=True, p=None)", desc: "以 Generator 進行隨機選取", what: "可指定是否重複與機率分佈。", uses: ["抽樣子集","洗牌/抽獎模擬"], notes: ["replace=False 表示不重複抽樣"], code: `import numpy as np\nrng = np.random.default_rng(0)\na = np.array([10,20,30,40])\npick = rng.choice(a, size=3, replace=False)\nprint(pick.shape, np.all(np.isin(pick, a)))`, output: `(3,) True` },
+          {
+            name: "np.fromfunction(func, shape, dtype=...)",
+            desc: "向量化索引生成：函式只被呼叫一次，由 NumPy 傳入索引網格",
+            what: "用函式 f(i, j, ...) 定義每個位置的數值，避免 Python 逐元素迴圈。",
+            uses: ["高效產生座標依賴的陣列（如網格、距離、模板）"],
+            notes: ["函式接收 0..shape[k]-1 的索引陣列；效能佳，易讀。"],
+            code: `import numpy as np\na = np.fromfunction(lambda i, j: i + j, (3, 3), dtype=int)\nprint(a)`,
+            output: `[[0 1 2]\n [1 2 3]\n [2 3 4]]`
+          },
         ]},
         { id: "cat-02-attrs", title: "② 陣列資訊（Array Attributes）", items: [
           { name: "a.shape", desc: "回傳陣列的形狀（行數、列數、…）", what: "取得每個維度的長度，例如 2D 的 (rows, cols)、3D 的 (depth, height, width)。", uses: ["確認資料維度是否正確","在 reshape / 切片前先檢查大小"], code: `import numpy as np\na = np.arange(12).reshape(3,4)\nprint(a.shape)`, output: `(3, 4)`, notes: ["解釋：表示陣列有 3 行 4 列。"] },
@@ -123,7 +132,7 @@
           { name: "a.data", desc: "底層緩衝區的記憶體位址（平常不需使用）", what: "提供與 C/C++/GPU 介面的低階存取資訊。", uses: ["低階除錯","與原生延伸模組交換資料"], notes: ["輸出格式與位址會因系統而異，僅作參考。"], code: `import numpy as np\na = np.arange(12).reshape(3,4)\nprint(a.data)`, output: `<memory at 0x000001D5A6F4B040>`, imgdesc: "這是 NumPy 陣列在記憶體中的位置表示。" },
         ]},
         { id: "cat-03-shape", title: "③ 形狀與軸（reshape / ravel / flatten / transpose / .T / swapaxes / meshgrid）", items: [
-          { name: "np.reshape(a, shape)", desc: "改變形狀（元素數量必須相同）", code: `import numpy as np\na = np.arange(6)\nprint(a.reshape(2,3))`, output: `[[0 1 2]\n [3 4 5]]` },
+          { name: "np.reshape(a, shape)", desc: "改變形狀（元素數量必須相同）", notes: ["多半回傳與原陣列共用資料的 view，改一處另一處會被影響；若需實體拷貝可搭配 .copy()。"], code: `import numpy as np\na = np.arange(6)\nb = a.reshape(2,3)   # 通常為 view\nb[0,0] = 99\nprint(a)             # a 也被改到`, output: `[99  1  2  3  4  5]` },
           { name: "a.ravel() / a.flatten()", desc: "降成 1D（ravel 多半回傳 view；flatten 一定回傳 copy）", code: `import numpy as np\na = np.arange(6).reshape(2,3)\nprint(a.ravel())\nprint(a.flatten())`, output: `[0 1 2 3 4 5]\n[0 1 2 3 4 5]` },
           { name: "np.transpose(a, axes) / a.T", desc: "轉置或重排軸順序", code: `import numpy as np\na = np.arange(6).reshape(2,3)\nprint(a.T)`, output: `[[0 3]\n [1 4]\n [2 5]]`, demo: (() => { const A = makeMatrix(6, 8); const AT = transpose(A); return (<div className="grid md:grid-cols-2 gap-4"><Heatmap matrix={A} title={`A（${A.length}×${A[0].length}）`} /><Heatmap matrix={AT} title={`A.T（${AT.length}×${AT[0].length}）`} /></div>); })() },
           { name: "np.swapaxes(a, axis1, axis2)", desc: "交換兩個軸（多維資料常用）", code: `import numpy as np\na = np.arange(2*3*4).reshape(2,3,4)\nprint(np.swapaxes(a, 0, 1).shape)`, output: `(3, 2, 4)` },
@@ -132,6 +141,22 @@
         ]},
         { id: "cat-04-merge", title: "④ 合併與拆分（hstack / vstack / stack / split）", items: [
           { name: "np.hstack([a,b]) / np.vstack([a,b])", desc: "水平/垂直方向拼接", code: `import numpy as np\na = np.array([[1,2],[3,4]])\nb = np.array([[5,6],[7,8]])\nprint(np.hstack([a,b]))\nprint(np.vstack([a,b]))`, output: `[[1 2 5 6]\n [3 4 7 8]]\n[[1 2]\n [3 4]\n [5 6]\n [7 8]]` },
+          {
+            name: "np.c_[...]",
+            desc: "沿第二軸快速拼接（column-wise）",
+            what: "語法糖，等價於幾個陣列在 axis=1 上的簡潔串接。",
+            code: `import numpy as np\na = np.array([1,2,3])\nb = np.array([4,5,6])\nprint(np.c_[a, b])`,
+            output: `[[1 4]\n [2 5]\n [3 6]]`,
+            notes: ["等價於 np.concatenate([...], axis=1) 但更直觀；維度需能對齊。"]
+          },
+          {
+            name: "np.r_[...]  /  np.r_['r', ...]",
+            desc: "沿第一軸快速拼接（row-wise）/ 特殊切片到向量",
+            what: "語法糖；可把 linspace 片段與常數直接銜接。",
+            code: `import numpy as np\nprint(np.r_[np.array([1,2,3]), np.array([4,5,6])])\nprint(np.r_[-1:1:6j, [0]*3, 5, 6])`,
+            output: `[1 2 3 4 5 6]\n[-1.  -0.6 -0.2  0.2  0.6  1.   0.   0.   0.   5.   6. ]`,
+            notes: ["這是 index-like 語法；`np.r_['r', ...]` 會回傳 numpy.matrix，不建議在一般情境使用。"]
+          },
           { name: "np.stack([a,b], axis=...)", desc: "新增新軸後堆疊（維度+1）", code: `import numpy as np\na = np.array([1,2,3])\nb = np.array([4,5,6])\nprint(np.stack([a,b], axis=0))`, output: `[[1 2 3]\n [4 5 6]]` },
           { name: "np.split(a, indices_or_sections, axis)", desc: "依位置切分陣列", code: `import numpy as np\na = np.arange(10)\nleft, right = np.split(a, [6])\nprint(left, right)`, output: `[0 1 2 3 4 5] [6 7 8 9]` },
         ]},
